@@ -19,7 +19,7 @@ Ensure you have the following dependencies installed:
 
 Install the required dependencies using:
 ```bash
-pip install pillow pillow-heif lsLog
+pip install pillow pillow-heif
 ```
 
 ## Installation
