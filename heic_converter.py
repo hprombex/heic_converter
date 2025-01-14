@@ -25,41 +25,54 @@ HEIC Converter for converting .HEIC images to other formats like JPEG or PNG,
 while preserving metadata and providing additional options for quality and optimization.
 """
 
+from __future__ import annotations
+
 import os
 import argparse
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pillow_heif
 from PIL import Image
 from PIL.ExifTags import TAGS
 
-try:
+if TYPE_CHECKING:
     from lsLog import Log
-except ImportError:
-    import logging
+    from logging import Logger
 
 
 class HeicConverter:
     """Class to handle conversion of .HEIC images to other formats."""
 
-    def __init__(self, logger: "Log" = None):
+    def __init__(self, logger: Log | Logger | None = None):
         """
         Initialize the HeicConverter class.
 
         :param logger: Optional logger instance for logging messages.
         """
-        if logger:
-            self.log = logger
-        else:
-            try:
-                self.log = Log(store=True, app_name="heic_converter")
-            except NameError:
-                logging.basicConfig(
-                    level=logging.INFO,
-                    format="%(asctime)s [%(levelname)-5.5s]: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S",
-                )
-                self.log = logging
+        self.log = logger or self._create_default_logger()
+
+    @staticmethod
+    def _create_default_logger() -> Logger | Log:
+        """
+        Create a default logger instance if no custom logger is provided.
+
+        :return: A configured logger instance.
+        """
+        try:
+            from lsLog import Log  # Trying to use a custom logger
+
+            return Log(store=True, app_name="heic_converter")
+
+        except ImportError:
+            import logging
+
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)-5.5s]: %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+            return logging.getLogger("heic_converter")
 
     @staticmethod
     def remove_exif_orientation(image: Image) -> Image:
@@ -224,7 +237,6 @@ class HeicConverter:
     def main(self) -> None:
         """Main method for executing the conversion process based on CLI arguments."""
         args = self.parse_args()
-        heic_converter = HeicConverter()
 
         if args.input_file:
             if not os.path.isfile(args.input_file):
@@ -232,7 +244,7 @@ class HeicConverter:
                     f"Input file '{args.input_file}' does not exist."
                 )
 
-            heic_converter.convert_heic(
+            self.convert_heic(
                 input_file=args.input_file,
                 output_file=args.output_path,
                 quality=args.quality,
@@ -251,7 +263,7 @@ class HeicConverter:
             heic_files = self.find_heic_files(args.input_dir)
             for idx, file in enumerate(heic_files):
                 self.log.info(f"Processing file: {idx + 1}/{len(heic_files)}")
-                heic_converter.convert_heic(
+                self.convert_heic(
                     input_file=file,
                     output_file=args.output_path,
                     quality=args.quality,
