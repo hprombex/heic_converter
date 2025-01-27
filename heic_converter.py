@@ -31,6 +31,7 @@ import os
 import argparse
 from pathlib import Path
 from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
 
 import pillow_heif
 from PIL import Image
@@ -261,17 +262,19 @@ class HeicConverter:
                 )
 
             heic_files = self.find_heic_files(args.input_dir)
-            for idx, file in enumerate(heic_files):
-                self.log.info(f"Processing file: {idx + 1}/{len(heic_files)}")
-                self.convert_heic(
-                    input_file=file,
-                    output_file=args.output_path,
-                    quality=args.quality,
-                    optimize=args.optimize,
-                    progressive=args.progressive,
-                    image_format=args.format,
-                    delete=args.delete,
-                )
+            max_threads: int = os.cpu_count()
+            with ThreadPoolExecutor(max_threads) as executor:
+                for idx, file in enumerate(heic_files):
+                    executor.submit(
+                        self.convert_heic,
+                        file,
+                        args.output_path,
+                        args.quality,
+                        args.optimize,
+                        args.progressive,
+                        args.format,
+                        args.delete,
+                    )
 
 
 if __name__ == "__main__":
