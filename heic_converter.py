@@ -29,51 +29,33 @@ from __future__ import annotations
 
 import os
 import argparse
+import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 import pillow_heif
 from PIL import Image
 from PIL.ExifTags import TAGS
 
-if TYPE_CHECKING:
-    from lsLog import Log
-    from logging import Logger
+
+file_stem = Path(__file__).stem
+log_directory = Path(__file__).with_name(f"{file_stem}_logs")
+log_file = log_directory / f"{file_stem}_{datetime.now():%H_%M_%d_%m_%Y}.log"
+os.makedirs(log_directory, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+console = logging.StreamHandler()
+file_handler = logging.FileHandler(log_file)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(name)6.8s:%(lineno)4d][%(levelname)-5.5s]: %(message)s",
+    handlers=[console, file_handler],
+)
 
 
 class HeicConverter:
     """Class to handle conversion of .HEIC images to other formats."""
-
-    def __init__(self, logger: Log | Logger | None = None):
-        """
-        Initialize the HeicConverter class.
-
-        :param logger: Optional logger instance for logging messages.
-        """
-        self.log = logger or self._create_default_logger()
-
-    @staticmethod
-    def _create_default_logger() -> Logger | Log:
-        """
-        Create a default logger instance if no custom logger is provided.
-
-        :return: A configured logger instance.
-        """
-        try:
-            from lsLog import Log  # Trying to use a custom logger
-
-            return Log(store=True, app_name="heic_converter")
-
-        except ImportError:
-            import logging
-
-            logging.basicConfig(
-                level=logging.INFO,
-                format="%(asctime)s [%(levelname)-5.5s]: %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            )
-            return logging.getLogger("heic_converter")
 
     @staticmethod
     def remove_exif_orientation(image: Image) -> Image:
@@ -85,7 +67,7 @@ class HeicConverter:
         """
         exif_data = image.getexif()
 
-        if exif_data is not None:
+        if exif_data:
             for tag in exif_data.keys():
                 if TAGS.get(tag) == "Orientation":
                     exif_data.pop(tag)
@@ -119,7 +101,7 @@ class HeicConverter:
 
         image_format = image_format.lower()
         if image_format not in ["jpeg", "png"]:  # only those formats are tested
-            self.log.warning(f"Untested format: {image_format}.")
+            logger.warning(f"Untested format: {image_format}.")
 
         image = Image.open(input_file)
 
@@ -143,13 +125,14 @@ class HeicConverter:
             progressive=progressive,
         )
 
-        self.log.info(f"Converted {original_name} to {output_file}")
+        logger.info(f"Converted {original_name} to {output_file}")
 
         if delete:
-            self.log.info(f"Deleting original file: '{input_file}'")
+            logger.info(f"Deleting original file: '{input_file}'")
             Path(input_file).unlink(missing_ok=True)
 
-    def find_heic_files(self, directory: str) -> list[str]:
+    @staticmethod
+    def find_heic_files(directory: str) -> list[str]:
         """
         Find all .HEIC files in a directory and its subdirectories.
 
@@ -162,7 +145,7 @@ class HeicConverter:
                 if file.lower().endswith(".heic"):
                     heic_files.append(os.path.join(root, file))
 
-        self.log.info(f"Found {len(heic_files)} .HEIC files in '{directory}'.")
+        logger.info(f"Found {len(heic_files)} .HEIC files in '{directory}'.")
 
         return heic_files
 
