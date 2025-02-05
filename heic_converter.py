@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 console = logging.StreamHandler()
 file_handler = logging.FileHandler(log_file)
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(name)6.8s:%(lineno)4d][%(levelname)-5.5s]: %(message)s",
     handlers=[console, file_handler],
 )
